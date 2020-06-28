@@ -27,14 +27,30 @@ to `Package/manifest.json`
 
 # Usage
 
-```csharp
+* async function 
 
-async LitTask RunAsync(){
-    await new SomeAwaitableObject();
-}
+    ```csharp
+
+    async LitTask RunAsync(){
+        await new SomeAwaitableObject();
+    }
 
 
-```
+    async LitTask<int> GetValueAsync(){
+        await new SomeAwaitableObject();
+        return 100;
+    }
+
+    ```
+
+* LitTask.WhenAll(params LitTask[] tasks) => LitTask
+    ```
+    同时启动所有任务，并等待所有任务完成。
+    ```
+* LitTask.WhenAny(params LitTask[] tasks) => LitTask\<WhenAnyResult>
+    ```
+    同时启动所有任务,只要有一个任务结束，就返回。
+    ```
 
 # FAQ
 
@@ -43,8 +59,3 @@ async LitTask RunAsync(){
   这是因为在Debug编译模式下，async/await编译出来的状态机是class类型的. Release编译模式下会切换成struct类型，就无alloc了。
   Unity2020已经支持了在编辑器中切换release/debug编译模式。可以测试看看。
 
-
-
-# TODO:
-
-LitTask\<T> 实现
