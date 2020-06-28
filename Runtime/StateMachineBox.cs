@@ -4,10 +4,9 @@ using System.Runtime.CompilerServices;
 using System.Diagnostics;
 
 namespace MS.Async.CompilerServices{
-    internal interface IStateMachineBox:ILitTaskValueSource
-    {
-        void SetResult(short token);
 
+    internal interface IBaseStateMachineBox
+    {
         void SetException(Exception e,short token);
 
         short Token{
@@ -15,64 +14,62 @@ namespace MS.Async.CompilerServices{
         }
         Action MoveNext{
             get;
-        }
+        }     
     }
 
-    internal class StateMachineBox<TStateMachine>:IStateMachineBox where TStateMachine : IAsyncStateMachine{
-        private static short _globalToken = 0;
+    internal interface IStateMachineBox:IBaseStateMachineBox,ILitTaskValueSourceVoid
+    {
+        void SetResult(short token);
 
-        private static short AllocateToken(){
-            do{
-                _globalToken ++;
-            }while(_globalToken == 0);
-            return _globalToken;
-        }
+    }
 
-        private static Stack<StateMachineBox<TStateMachine>> _pool = new Stack<StateMachineBox<TStateMachine>>();
+    internal interface IStateMachineBox<TResult>:IBaseStateMachineBox,ILitTaskValueSource<TResult>{
+        void SetResult(TResult result,short token);
+    }
 
-        public static StateMachineBox<TStateMachine> Allocate(ref TStateMachine stateMachine){
-            StateMachineBox<TStateMachine> ret = null;
-            if(_pool.Count == 0){
-                ret = new StateMachineBox<TStateMachine>();
-            }else{
-                ret = _pool.Pop();
-            }
-            ret.AcquireToken();
-            ret.stateMachine = stateMachine;
-            return ret;
-        }
 
-        public TStateMachine stateMachine;
-
+    internal abstract class BaseStateMachineBox<TStateMachine> : IBaseStateMachineBox where TStateMachine : IAsyncStateMachine
+    {
+        protected TStateMachine _stateMachine;
         private Action _continuation;
-
-        private short _token;
+        protected short _token;
         private ValueSourceStatus _status;
         private Exception _exception;
-
         private bool _shouldForget = false;
 
-        // private CancellationToken _cancellationToken;
-
-
-        private StateMachineBox(){
+        public BaseStateMachineBox(){
             this.MoveNext = ()=>{
-                stateMachine.MoveNext();
+                _stateMachine.MoveNext();
             };
         }
 
-        private void AcquireToken(){
-            _token = AllocateToken();
-        }
-
-        private void ReturnToPool(){
+        protected void Clear(){
             _token = 0;
             _continuation = null;
             _status = ValueSourceStatus.Pending;
-            stateMachine = default(TStateMachine);
-            _pool.Push(this);
+            _stateMachine = default(TStateMachine);
             _exception = null;
         }
+
+        protected void ThrowCancellationOrExceptionIfNeed(){
+            if(_status == ValueSourceStatus.Faulted){
+                throw new AggregateException(_exception);
+            }else if(_status == ValueSourceStatus.Canceled){
+                throw _exception;
+            }           
+        }
+
+        protected void Succeed(){
+            _status = ValueSourceStatus.Succeed;
+            if(!_shouldForget){
+                if(_continuation != null){
+                    _continuation();
+                }else{
+                    //user does not await the task
+                }
+            }
+        }
+        
 
         public Action MoveNext{
             get;private set;
@@ -84,7 +81,7 @@ namespace MS.Async.CompilerServices{
             }
         }
 
-        private void ValidateToken(short token){
+        protected void ValidateToken(short token){
             if(_token == 0){
                 throw new ObjectDisposedException(this.GetType().Name);
             }
@@ -93,45 +90,9 @@ namespace MS.Async.CompilerServices{
             }
         }
 
-        /// <summary>
-        /// Forget means GetStatus & OnComplete & GetResult won't be called anymore.
-        /// </summary>
-        public void Forget(short token){
-            ValidateToken(token);
-            _shouldForget = true;
-        }
-
-        public void GetResult(short token)
-        {
-            ValidateToken(token);
-            try{
-                if(_status == ValueSourceStatus.Faulted){
-                    throw new AggregateException(_exception);
-                }else if(_status == ValueSourceStatus.Canceled){
-                    throw _exception;
-                }
-            }finally{
-                ReturnToPool();
-            }
-        }
 
         [DebuggerHidden()]
-        public void SetResult(short token){
-            ValidateToken(token);
-            _status = ValueSourceStatus.Succeed;
-            if(!_shouldForget){
-                if(_continuation != null){
-                    _continuation();
-                }else{
-                    //user does not await the task
-                }
-            }else{
-                ReturnToPool();
-            }
-        }
-
-        [DebuggerHidden()]
-        public void SetException(Exception e,short token){
+        public virtual void SetException(Exception e,short token){
             ValidateToken(token);
             if(e is LitCancelException litCancelException){
                 _status = ValueSourceStatus.Canceled;
@@ -145,9 +106,21 @@ namespace MS.Async.CompilerServices{
                 }else{
                     //user does not await the task
                 }
-            }else{
-                ReturnToPool();
             }
+        }
+
+        protected bool shouldForget{
+            get{
+                return _shouldForget;
+            }
+        }
+
+        /// <summary>
+        /// Forget means GetStatus & OnComplete & GetResult won't be called anymore.
+        /// </summary>
+        public void Forget(short token){
+            ValidateToken(token);
+            _shouldForget = true;
         }
 
         public ValueSourceStatus GetStatus(short token)
@@ -160,6 +133,131 @@ namespace MS.Async.CompilerServices{
         {
             ValidateToken(token);
             _continuation = continuation;
+        }
+    }
+
+    internal class StateMachineBox<TStateMachine>:BaseStateMachineBox<TStateMachine>,IStateMachineBox where TStateMachine : IAsyncStateMachine{
+        private static short _globalToken = 0;
+
+        private static short AllocateToken(){
+            do{
+                _globalToken ++;
+            }while(_globalToken == 0);
+            return _globalToken;
+        }
+        private static Stack<StateMachineBox<TStateMachine>> _pool = new Stack<StateMachineBox<TStateMachine>>();
+        public static StateMachineBox<TStateMachine> Allocate(ref TStateMachine stateMachine){
+            StateMachineBox<TStateMachine> ret = null;
+            if(_pool.Count == 0){
+                ret = new StateMachineBox<TStateMachine>();
+            }else{
+                ret = _pool.Pop();
+            }
+            ret.AcquireToken();
+            ret._stateMachine = stateMachine;
+            return ret;
+        }
+
+        private void AcquireToken(){
+            _token = AllocateToken();
+        }
+
+        private void ReturnToPool(){
+            this.Clear();
+            _pool.Push(this);
+            
+        }
+
+        public void GetResult(short token)
+        {
+            ValidateToken(token);
+            try{
+                ThrowCancellationOrExceptionIfNeed();
+            }finally{
+                ReturnToPool();
+            }
+        }
+
+        [DebuggerHidden()]
+        public void SetResult(short token){
+            ValidateToken(token);
+            this.Succeed();
+            if(this.shouldForget){
+                ReturnToPool();
+            }
+        }
+
+        [DebuggerHidden()]
+        public override void SetException(Exception e,short token){
+            base.SetException(e,token);
+            if(this.shouldForget){
+                ReturnToPool();
+            }
+        }
+    }    
+
+    internal class StateMachineBox<TStateMachine,TResult>:BaseStateMachineBox<TStateMachine>,IStateMachineBox<TResult> where TStateMachine : IAsyncStateMachine{
+        private static short _globalToken = 0;
+
+        private static short AllocateToken(){
+            do{
+                _globalToken ++;
+            }while(_globalToken == 0);
+            return _globalToken;
+        }
+        private static Stack<StateMachineBox<TStateMachine,TResult>> _pool = new Stack<StateMachineBox<TStateMachine,TResult>>();
+        public static StateMachineBox<TStateMachine,TResult> Allocate(ref TStateMachine stateMachine){
+            StateMachineBox<TStateMachine,TResult> ret = null;
+            if(_pool.Count == 0){
+                ret = new StateMachineBox<TStateMachine,TResult>();
+            }else{
+                ret = _pool.Pop();
+            }
+            ret.AcquireToken();
+            ret._stateMachine = stateMachine;
+            return ret;
+        }
+
+        private TResult _result;
+
+        private void AcquireToken(){
+            _token = AllocateToken();
+        }
+
+        private void ReturnToPool(){
+            this.Clear();
+            _result = default(TResult);
+            _pool.Push(this);
+            
+        }
+
+        public TResult GetResult(short token)
+        {
+            ValidateToken(token);
+            try{
+                ThrowCancellationOrExceptionIfNeed();
+                return _result;
+            }finally{
+                ReturnToPool();
+            }
+        }
+
+        [DebuggerHidden()]
+        public void SetResult(TResult result,short token){
+            ValidateToken(token);
+            _result = result;
+            this.Succeed();
+            if(this.shouldForget){
+                ReturnToPool();
+            }
+        }
+
+        [DebuggerHidden()]
+        public override void SetException(Exception e,short token){
+            base.SetException(e,token);
+            if(this.shouldForget){
+                ReturnToPool();
+            }
         }
     }    
 }

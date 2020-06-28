@@ -7,10 +7,10 @@ namespace MS.Async{
     public struct LitTask
     {
         
-        private ILitTaskValueSource _valueSource;
+        private ILitTaskValueSourceVoid _valueSource;
         private short _token;
 
-        public LitTask(ILitTaskValueSource valueSource,short token){
+        public LitTask(ILitTaskValueSourceVoid valueSource,short token){
             _valueSource = valueSource;
             _token = token;
         }
@@ -51,6 +51,54 @@ namespace MS.Async{
         public LitTaskAwaiter GetAwaiter() {
             return new LitTaskAwaiter(this);
         }
+    }
+
+    [System.Runtime.CompilerServices.AsyncMethodBuilder(typeof(AsyncLitTaskMethodBuilder<>))]
+    public struct LitTask<T>{
+        private ILitTaskValueSource<T> _valueSource;
+        private short _token;
+
+        public LitTask(ILitTaskValueSource<T> valueSource,short token){
+            _valueSource = valueSource;
+            _token = token;
+        }
+
+        public void Forget(){
+            if(_valueSource == null){
+                return;
+            }
+            _valueSource.Forget(_token);
+        }
+        
+
+        [DebuggerHidden]
+        internal T GetResult(){
+            if(_valueSource == null){
+                return default;
+            }
+            return _valueSource.GetResult(_token);
+        }
+
+        internal bool IsCompleted{
+            get{
+                if(_valueSource == null){
+                    return true;
+                }
+                var ret = _valueSource.GetStatus(_token) != ValueSourceStatus.Pending;
+                return ret;
+            }
+        }
+
+        internal void OnCompleted(Action continuation){
+            if(_valueSource == null){
+                return;
+            }
+            _valueSource.OnCompleted(continuation,_token);
+        }
+
+        public LitTaskAwaiter<T> GetAwaiter() {
+            return new LitTaskAwaiter<T>(this);
+        }        
     }
 
 }
