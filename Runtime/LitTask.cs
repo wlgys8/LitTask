@@ -7,10 +7,10 @@ namespace MS.Async{
     public partial struct LitTask
     {
         
-        private ILitTaskValueSourceVoid _valueSource;
+        private ILitTaskValueSource _valueSource;
         private short _token;
 
-        public LitTask(ILitTaskValueSourceVoid valueSource,short token){
+        public LitTask(ILitTaskValueSource valueSource,short token){
             _valueSource = valueSource;
             _token = token;
         }

@@ -17,7 +17,7 @@ namespace MS.Async{
     }
 
 
-    internal class WhenAllSource : ILitTaskValueSourceVoid
+    internal class WhenAllSource : ILitTaskValueSource
     {
         private static CompilerServices.TokenAllocator _tokenAllocator = new CompilerServices.TokenAllocator();
         private static Stack<WhenAllSource> _pool = new Stack<WhenAllSource>();

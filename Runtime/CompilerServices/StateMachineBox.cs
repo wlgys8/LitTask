@@ -28,7 +28,7 @@ namespace MS.Async.CompilerServices{
         }     
     }
 
-    internal interface IStateMachineBox:IBaseStateMachineBox,ILitTaskValueSourceVoid
+    internal interface IStateMachineBox:IBaseStateMachineBox,ILitTaskValueSource
     {
         void SetResult(short token);
 

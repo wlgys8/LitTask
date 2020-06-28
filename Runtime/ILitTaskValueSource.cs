@@ -2,7 +2,7 @@
 
 namespace MS.Async{
 
-    public interface ILitTaskValueSource
+    public interface ILitTaskValueSourceBase
     {
 
         ValueSourceStatus GetStatus(short token);
@@ -12,14 +12,14 @@ namespace MS.Async{
         void Forget(short token);
 
     }
-    public interface ILitTaskValueSourceVoid:ILitTaskValueSource
+    public interface ILitTaskValueSource:ILitTaskValueSourceBase
     {
 
         void GetResult(short token);
 
     }
 
-    public interface ILitTaskValueSource<T>:ILitTaskValueSource
+    public interface ILitTaskValueSource<T>:ILitTaskValueSourceBase
     {
         T GetResult(short token);
     }

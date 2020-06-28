@@ -12,11 +12,14 @@ namespace MS.Async.CompilerServices{
     {
         private static Stack<AsyncLitTaskMethodBuilder> _pool = new Stack<AsyncLitTaskMethodBuilder>();
         public static AsyncLitTaskMethodBuilder Create(){
+            AsyncLitTaskMethodBuilder builder = null;
             if(_pool.Count == 0){
-                return new AsyncLitTaskMethodBuilder();
+                builder = new AsyncLitTaskMethodBuilder();
             }else{
-                return _pool.Pop();
+                builder = _pool.Pop();
             }
+            return builder;
+
         }
 
         private IStateMachineBox _stateMachineBox;
