@@ -5,6 +5,17 @@ using System.Diagnostics;
 
 namespace MS.Async.CompilerServices{
 
+    internal class TokenAllocator{
+        private short _token = 0;
+
+        public short Next(){
+            do{
+                _token ++;
+            }while(_token == 0);
+            return _token;
+        }     
+    }
+
     internal interface IBaseStateMachineBox
     {
         void SetException(Exception e,short token);
@@ -137,14 +148,9 @@ namespace MS.Async.CompilerServices{
     }
 
     internal class StateMachineBox<TStateMachine>:BaseStateMachineBox<TStateMachine>,IStateMachineBox where TStateMachine : IAsyncStateMachine{
-        private static short _globalToken = 0;
+        
+        private static TokenAllocator _tokenAllocator = new TokenAllocator();
 
-        private static short AllocateToken(){
-            do{
-                _globalToken ++;
-            }while(_globalToken == 0);
-            return _globalToken;
-        }
         private static Stack<StateMachineBox<TStateMachine>> _pool = new Stack<StateMachineBox<TStateMachine>>();
         public static StateMachineBox<TStateMachine> Allocate(ref TStateMachine stateMachine){
             StateMachineBox<TStateMachine> ret = null;
@@ -159,7 +165,7 @@ namespace MS.Async.CompilerServices{
         }
 
         private void AcquireToken(){
-            _token = AllocateToken();
+            _token = _tokenAllocator.Next();
         }
 
         private void ReturnToPool(){
@@ -197,14 +203,8 @@ namespace MS.Async.CompilerServices{
     }    
 
     internal class StateMachineBox<TStateMachine,TResult>:BaseStateMachineBox<TStateMachine>,IStateMachineBox<TResult> where TStateMachine : IAsyncStateMachine{
-        private static short _globalToken = 0;
+        private static TokenAllocator _tokenAllocator = new TokenAllocator();
 
-        private static short AllocateToken(){
-            do{
-                _globalToken ++;
-            }while(_globalToken == 0);
-            return _globalToken;
-        }
         private static Stack<StateMachineBox<TStateMachine,TResult>> _pool = new Stack<StateMachineBox<TStateMachine,TResult>>();
         public static StateMachineBox<TStateMachine,TResult> Allocate(ref TStateMachine stateMachine){
             StateMachineBox<TStateMachine,TResult> ret = null;
@@ -221,7 +221,7 @@ namespace MS.Async.CompilerServices{
         private TResult _result;
 
         private void AcquireToken(){
-            _token = AllocateToken();
+            _token = _tokenAllocator.Next();
         }
 
         private void ReturnToPool(){
