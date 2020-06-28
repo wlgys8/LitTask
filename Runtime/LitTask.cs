@@ -4,7 +4,7 @@ using System;
 namespace MS.Async{
     using CompilerServices;
     [System.Runtime.CompilerServices.AsyncMethodBuilder(typeof(AsyncLitTaskMethodBuilder))]
-    public struct LitTask
+    public partial struct LitTask
     {
         
         private ILitTaskValueSourceVoid _valueSource;
