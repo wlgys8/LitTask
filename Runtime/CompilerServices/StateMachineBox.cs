@@ -39,6 +39,7 @@ namespace MS.Async.CompilerServices{
     }
 
 
+    
     internal abstract class BaseStateMachineBox<TStateMachine> : IBaseStateMachineBox where TStateMachine : IAsyncStateMachine
     {
         protected TStateMachine _stateMachine;
@@ -48,6 +49,7 @@ namespace MS.Async.CompilerServices{
         private Exception _exception;
         private bool _shouldForget = false;
 
+        [DebuggerHidden]
         public BaseStateMachineBox(){
             this.MoveNext = ()=>{
                 _stateMachine.MoveNext();
@@ -70,6 +72,7 @@ namespace MS.Async.CompilerServices{
             }           
         }
 
+        [DebuggerHidden]
         protected void Succeed(){
             _status = ValueSourceStatus.Succeed;
             if(!_shouldForget){
@@ -81,7 +84,7 @@ namespace MS.Async.CompilerServices{
             }
         }
         
-
+        [DebuggerHidden]
         public Action MoveNext{
             get;private set;
         }
@@ -147,31 +150,30 @@ namespace MS.Async.CompilerServices{
         }
     }
 
-    internal class StateMachineBox<TStateMachine>:BaseStateMachineBox<TStateMachine>,IStateMachineBox where TStateMachine : IAsyncStateMachine{
+    internal class StateMachineBox<TStateMachine>:BaseStateMachineBox<TStateMachine>,IStateMachineBox,Diagnostics.ITracableObject where TStateMachine : IAsyncStateMachine{
         
         private static TokenAllocator _tokenAllocator = new TokenAllocator();
 
-        private static Stack<StateMachineBox<TStateMachine>> _pool = new Stack<StateMachineBox<TStateMachine>>();
+        [DebuggerHidden]
         public static StateMachineBox<TStateMachine> Allocate(ref TStateMachine stateMachine){
-            StateMachineBox<TStateMachine> ret = null;
-            if(_pool.Count == 0){
-                ret = new StateMachineBox<TStateMachine>();
-            }else{
-                ret = _pool.Pop();
+            var token = _tokenAllocator.Next();;
+            var box = TaskValueSourcePool<StateMachineBox<TStateMachine>>.Allocate();
+            box._token = token;
+            box._stateMachine = stateMachine;
+            Diagnostics.Trace.TraceAllocation(box);
+            return box;
+        }
+
+
+        public string DebugNameId{
+            get{
+                return _stateMachine.GetType().Name;
             }
-            ret.AcquireToken();
-            ret._stateMachine = stateMachine;
-            return ret;
         }
-
-        private void AcquireToken(){
-            _token = _tokenAllocator.Next();
-        }
-
         private void ReturnToPool(){
             this.Clear();
-            _pool.Push(this);
-            
+            TaskValueSourcePool<StateMachineBox<TStateMachine>>.Return(this);
+            Diagnostics.Trace.TraceReturn(this);
         }
 
         public void GetResult(short token)
@@ -202,33 +204,23 @@ namespace MS.Async.CompilerServices{
         }
     }    
 
-    internal class StateMachineBox<TStateMachine,TResult>:BaseStateMachineBox<TStateMachine>,IStateMachineBox<TResult> where TStateMachine : IAsyncStateMachine{
+    internal class StateMachineBox<TStateMachine,TResult>:BaseStateMachineBox<TStateMachine>,IStateMachineBox<TResult>,Diagnostics.ITracableObject where TStateMachine : IAsyncStateMachine{
         private static TokenAllocator _tokenAllocator = new TokenAllocator();
 
-        private static Stack<StateMachineBox<TStateMachine,TResult>> _pool = new Stack<StateMachineBox<TStateMachine,TResult>>();
         public static StateMachineBox<TStateMachine,TResult> Allocate(ref TStateMachine stateMachine){
-            StateMachineBox<TStateMachine,TResult> ret = null;
-            if(_pool.Count == 0){
-                ret = new StateMachineBox<TStateMachine,TResult>();
-            }else{
-                ret = _pool.Pop();
-            }
-            ret.AcquireToken();
+            StateMachineBox<TStateMachine,TResult> ret = TaskValueSourcePool<StateMachineBox<TStateMachine,TResult>>.Allocate();
+            ret._token = _tokenAllocator.Next();
             ret._stateMachine = stateMachine;
+            Diagnostics.Trace.TraceAllocation(ret);
             return ret;
         }
 
         private TResult _result;
-
-        private void AcquireToken(){
-            _token = _tokenAllocator.Next();
-        }
-
         private void ReturnToPool(){
             this.Clear();
             _result = default(TResult);
-            _pool.Push(this);
-            
+            TaskValueSourcePool<StateMachineBox<TStateMachine,TResult>>.Return(this);
+            Diagnostics.Trace.TraceReturn(this);
         }
 
         public TResult GetResult(short token)
@@ -259,5 +251,12 @@ namespace MS.Async.CompilerServices{
                 ReturnToPool();
             }
         }
+
+        public string DebugNameId{
+            get{
+                return _stateMachine.GetType().Name;
+            }
+        }
+        
     }    
 }

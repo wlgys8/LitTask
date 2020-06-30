@@ -17,7 +17,7 @@ namespace MS.Async{
     }
 
 
-    internal class WhenAllSource : ILitTaskValueSource
+    internal class WhenAllSource : ILitTaskValueSource,Diagnostics.ITracableObject
     {
         private static CompilerServices.TokenAllocator _tokenAllocator = new CompilerServices.TokenAllocator();
         private static Stack<WhenAllSource> _pool = new Stack<WhenAllSource>();
@@ -82,6 +82,12 @@ namespace MS.Async{
         public short Token{
             get{
                 return _token;
+            }
+        }
+
+        public string DebugNameId {
+            get{
+                return this.GetType().Name;
             }
         }
 

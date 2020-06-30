@@ -47,7 +47,7 @@ namespace MS.Async{
         }
     }
 
-    internal class LitTaskWhenAnySource : ILitTaskValueSource<LitTask.WhenAnyResult>
+    internal class LitTaskWhenAnySource : ILitTaskValueSource<LitTask.WhenAnyResult>,Diagnostics.ITracableObject
     {
 
         private static CompilerServices.TokenAllocator _tokenAllocator = new CompilerServices.TokenAllocator();
@@ -99,6 +99,12 @@ namespace MS.Async{
         public short Token{
             get{
                 return _token;
+            }
+        }
+
+        public string DebugNameId{
+            get{
+                return this.GetType().Name;
             }
         }
 

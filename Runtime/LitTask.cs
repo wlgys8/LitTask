@@ -96,6 +96,9 @@ namespace MS.Async{
             _valueSource.OnCompleted(continuation,_token);
         }
 
+        /// <summary>
+        /// This method is intended for compiler use. Don't call it in your code.
+        /// </summary>
         public LitTaskAwaiter<T> GetAwaiter() {
             return new LitTaskAwaiter<T>(this);
         }        

@@ -8,9 +8,11 @@ using System.Diagnostics;
 
 namespace MS.Async.CompilerServices{
 
-    public class AsyncLitTaskMethodBuilder
+    public class AsyncLitTaskMethodBuilder:Diagnostics.ITracableObject
     {
         private static Stack<AsyncLitTaskMethodBuilder> _pool = new Stack<AsyncLitTaskMethodBuilder>();
+
+        [DebuggerHidden]
         public static AsyncLitTaskMethodBuilder Create(){
             AsyncLitTaskMethodBuilder builder = null;
             if(_pool.Count == 0){
@@ -18,6 +20,7 @@ namespace MS.Async.CompilerServices{
             }else{
                 builder = _pool.Pop();
             }
+            Diagnostics.Trace.TraceAllocation(builder);
             return builder;
 
         }
@@ -29,6 +32,7 @@ namespace MS.Async.CompilerServices{
             _token = 0;
             _stateMachineBox = null;
             _pool.Push(this);
+            Diagnostics.Trace.TraceReturn(this);
         }
 
         private void ValidateToken(){
@@ -54,6 +58,7 @@ namespace MS.Async.CompilerServices{
                 if(_stateMachineBox != null){
                     _stateMachineBox.SetException(exception,_token);
                 }else{
+                    UnityEngine.Debug.LogException(exception);
                     throw exception;
                 }
             }finally{
@@ -68,6 +73,7 @@ namespace MS.Async.CompilerServices{
             stateMachine.MoveNext();
         }
 
+        [DebuggerHidden]
         private void CreateStateMachineBoxIfNot<TStateMachine>(ref TStateMachine stateMachine) 
         where TStateMachine : IAsyncStateMachine{
             if(_stateMachineBox == null){
@@ -102,6 +108,12 @@ namespace MS.Async.CompilerServices{
         public LitTask Task{
             get{
                 return new LitTask(_stateMachineBox,_token);
+            }
+        }
+
+        public string DebugNameId{
+            get{
+                return this.GetType().Name;
             }
         }
     }
