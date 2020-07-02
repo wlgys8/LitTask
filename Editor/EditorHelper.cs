@@ -46,9 +46,19 @@ namespace MS.Async.Editor{
                     return (int)SplitterStateType.GetField("currentActiveSplitter",flags).GetValue(_raw);
                 }
             }
-            public int[] realSizes{
+
+            public float[] realSizes{
                 get{
-                    return (int[])SplitterStateType.GetField("realSizes",flags).GetValue(_raw);
+                    #if UNITY_2019_1_OR_NEWER
+                        return (float[])SplitterStateType.GetField("realSizes",flags).GetValue(_raw);
+                    #else
+                        var intRealSizes = (int[])SplitterStateType.GetField("realSizes",flags).GetValue(_raw);
+                        float[] floatRealSizes = new float[intRealSizes.Length];
+                        for(var i = 0; i < intRealSizes.Length;i++){
+                            floatRealSizes[i] = intRealSizes[i];
+                        }
+                        return floatRealSizes;
+                    #endif
                 }
             }
             public int splitSize{
