@@ -22,6 +22,11 @@ namespace MS.Async{
 
         private static LitCancelException _default = new LitCancelException();
 
+        public static LitCancelException DEFAULT{
+            get{
+                return _default;
+            }
+        }
         public static LitCancelException Throw(){
             throw _default;
         }

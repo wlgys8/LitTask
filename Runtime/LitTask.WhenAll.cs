@@ -6,9 +6,9 @@ namespace MS.Async{
     public partial struct LitTask
     {
 
-        public static LitTask WhenAll(IEnumerable<LitTask> tasks){
+        public static async LitTask WhenAll(IEnumerable<LitTask> tasks){
             var source = WhenAllSource.Get(tasks);
-            return new LitTask(source,source.Token);
+            await new LitTask(source,source.Token);
         }
 
         public static LitTask WhenAll(params LitTask[] tasks){
