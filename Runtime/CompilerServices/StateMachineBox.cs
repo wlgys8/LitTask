@@ -5,7 +5,7 @@ using System.Diagnostics;
 
 namespace MS.Async.CompilerServices{
 
-    internal class TokenAllocator{
+    public class TokenAllocator{
         private short _token = 0;
 
         public short Next(){
