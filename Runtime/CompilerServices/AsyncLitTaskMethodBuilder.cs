@@ -68,10 +68,14 @@ namespace MS.Async.CompilerServices{
         public void SetResult(){
             _status = ValueSourceStatus.Succeed;
             if(_continuation != null){
+                // get result will be called in continuation
                 _continuation();
-            }
-            if(_shouldForget){
-                ReturnToPool();
+            }else{
+                if(_shouldForget){
+                    ReturnToPool();
+                }else{
+                    //maybe leak
+                }
             }
         }
 
@@ -85,14 +89,17 @@ namespace MS.Async.CompilerServices{
             _exception = exception;
             if(_continuation != null){
                 _continuation();
-            }
-            if(_shouldForget){
-                try{
-                    if(_status == ValueSourceStatus.Faulted){
-                        throw new AggregateException(_exception);
+            }else{
+                if(_shouldForget){
+                    try{
+                        if(_status == ValueSourceStatus.Faulted){
+                            throw new AggregateException(_exception);
+                        }
+                    }finally{
+                        ReturnToPool();
                     }
-                }finally{
-                    ReturnToPool();
+                }else{
+                    //maybe leak
                 }
             }
         }
@@ -239,9 +246,12 @@ namespace MS.Async.CompilerServices{
             _status = ValueSourceStatus.Succeed;
             if(_continuation != null){
                 _continuation();
-            }
-            if(_shouldForget){
-                ReturnToPool();
+            }else{
+                if(_shouldForget){
+                    ReturnToPool();
+                }else{
+                    //maybe leak
+                }
             }
         }
 
@@ -255,14 +265,17 @@ namespace MS.Async.CompilerServices{
             _exception = exception;
             if(_continuation != null){
                 _continuation();
-            }
-            if(_shouldForget){
-                try{
-                    if(_status == ValueSourceStatus.Faulted){
-                        throw new AggregateException(_exception);
+            }else{
+                if(_shouldForget){
+                    try{
+                        if(_status == ValueSourceStatus.Faulted){
+                            throw new AggregateException(_exception);
+                        }
+                    }finally{
+                        ReturnToPool();
                     }
-                }finally{
-                    ReturnToPool();
+                }else{
+                    //maybe leak
                 }
             }
         }
