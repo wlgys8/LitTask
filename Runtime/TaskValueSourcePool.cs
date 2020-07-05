@@ -5,7 +5,7 @@ namespace MS.Async{
     using Diagnostics;
 
 
-    public class TaskValueSourcePool<T> where T:ILitTaskValueSourceBase
+    public class TaskValueSourcePool<T> where T:new()
     {
         private static Stack<T> _pool = new Stack<T>();
         public static T Allocate(){
