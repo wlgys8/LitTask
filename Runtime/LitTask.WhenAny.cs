@@ -1,17 +1,23 @@
 ﻿using System.Collections.Generic;
 using System;
-
+using System.Linq;
 
 namespace MS.Async{
     public partial struct LitTask 
     {
         
         public static async LitTask<WhenAnyResult> WhenAny(IEnumerable<LitTask> tasks){
+            if(tasks.Count() == 0){
+                return new WhenAnyResult(0,ValueSourceStatus.Succeed,null);
+            }
             var source = LitTaskWhenAnySource.Get(tasks);
             return await new LitTask<WhenAnyResult>(source,source.Token);
         }
 
         public static LitTask<WhenAnyResult> WhenAny(params LitTask[] tasks){
+            if(tasks.Length == 0){
+                return new LitTask<WhenAnyResult>(new WhenAnyResult(0,ValueSourceStatus.Succeed,null));
+            }
             return WhenAny(new List<LitTask>(tasks));
         }
 

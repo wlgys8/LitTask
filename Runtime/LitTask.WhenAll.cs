@@ -7,11 +7,17 @@ namespace MS.Async{
     {
 
         public static async LitTask WhenAll(IEnumerable<LitTask> tasks){
+            if(tasks.Count() == 0){
+                return;
+            }
             var source = WhenAllSource.Get(tasks);
             await new LitTask(source,source.Token);
         }
 
         public static LitTask WhenAll(params LitTask[] tasks){
+            if(tasks.Length == 0){
+                return default;
+            }
             return WhenAll(new List<LitTask>(tasks));
         }
     }
