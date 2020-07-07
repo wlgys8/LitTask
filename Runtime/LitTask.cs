@@ -56,11 +56,20 @@ namespace MS.Async{
     [System.Runtime.CompilerServices.AsyncMethodBuilder(typeof(AsyncLitTaskMethodBuilder<>))]
     public struct LitTask<T>{
         private ILitTaskValueSource<T> _valueSource;
+
+        private T _result;
         private short _token;
 
         public LitTask(ILitTaskValueSource<T> valueSource,short token){
             _valueSource = valueSource;
             _token = token;
+            _result = default;
+        }
+
+        public LitTask(T result){
+            _valueSource = null;
+            _token = 0;
+            _result = result;
         }
 
         public void Forget(){
@@ -74,7 +83,7 @@ namespace MS.Async{
         [DebuggerHidden]
         internal T GetResult(){
             if(_valueSource == null){
-                return default;
+                return _result;
             }
             return _valueSource.GetResult(_token);
         }
