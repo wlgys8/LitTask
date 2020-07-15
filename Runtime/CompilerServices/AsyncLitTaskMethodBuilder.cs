@@ -93,7 +93,8 @@ namespace MS.Async.CompilerServices{
                 if(_shouldForget){
                     try{
                         if(_status == ValueSourceStatus.Faulted){
-                            throw new AggregateException(_exception);
+                            throw _exception;
+                            // throw new AggregateException(_exception);
                         }
                     }finally{
                         ReturnToPool();
@@ -142,7 +143,8 @@ namespace MS.Async.CompilerServices{
         }
         protected void ThrowCancellationOrExceptionIfNeed(){
             if(_status == ValueSourceStatus.Faulted){
-                throw new AggregateException(_exception);
+                throw _exception;
+                // throw new AggregateException(_exception);
             }else if(_status == ValueSourceStatus.Canceled){
                 throw _exception;
             }           
@@ -269,7 +271,8 @@ namespace MS.Async.CompilerServices{
                 if(_shouldForget){
                     try{
                         if(_status == ValueSourceStatus.Faulted){
-                            throw new AggregateException(_exception);
+                            throw _exception;
+                            // throw new AggregateException(_exception);
                         }
                     }finally{
                         ReturnToPool();
@@ -318,7 +321,8 @@ namespace MS.Async.CompilerServices{
 
         protected void ThrowCancellationOrExceptionIfNeed(){
             if(_status == ValueSourceStatus.Faulted){
-                throw new AggregateException(_exception);
+                throw _exception;
+                // throw new AggregateException(_exception);
             }else if(_status == ValueSourceStatus.Canceled){
                 throw _exception;
             }           
