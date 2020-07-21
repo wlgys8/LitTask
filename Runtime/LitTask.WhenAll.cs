@@ -45,7 +45,11 @@ namespace MS.Async{
         private int _completedCount = 0;
 
         private ValueSourceStatus _status = ValueSourceStatus.Pending;
-        private Exception _exception;
+        private Exception _cancellationException;
+        private List<Exception> _exceptions;
+        private Action<LitTaskResult> _continueWith;
+        private bool _exceptionSlience = false;
+        private bool _runWithContinue = false;
 
         private WhenAllSource(){
         }
@@ -54,8 +58,34 @@ namespace MS.Async{
             this._completedCount ++;
             if(this._completedCount == this._tasks.Count()){
                 var continuation = this._continuation;
-                continuation();
+                if(continuation != null){
+                    continuation();
+                }else{
+                    if(_runWithContinue){
+                        try{
+                            TryInvokeContinueWithAction();
+                        }finally{
+                            this.ReturnToPool();
+                        }
+                    }else{
+                        //run in sync mode. user will call continue to get the result
+                    }
+                }
             }
+        }
+
+        private void TryInvokeContinueWithAction(){
+            if(_continueWith != null){
+                if(_status == ValueSourceStatus.Succeed){
+                    _continueWith(new LitTaskResult(null));
+                }else if(_status == ValueSourceStatus.Canceled){
+                    _continueWith(new LitTaskResult(_cancellationException));
+                }else if(_status == ValueSourceStatus.Faulted){
+                    _continueWith(new LitTaskResult(new AggregateException(_exceptions)));
+                }
+            }else{
+                //ignore exceptions
+            }           
         }
 
         private void Initialize(IEnumerable<LitTask> tasks,short token){
@@ -72,7 +102,10 @@ namespace MS.Async{
             _continuation = null;
             _completedCount = 0;
             _status = ValueSourceStatus.Pending;
-            _exception = null;
+            _cancellationException = null;
+            _exceptions = null;
+            _continueWith = null;
+            _runWithContinue = false;
             _pool.Push(this);
         }
 
@@ -97,11 +130,16 @@ namespace MS.Async{
             }
         }
 
-        public void Forget(short token)
+        public void Continue(short token,bool exceptionSlience,Action<LitTaskResult> action)
         {
             ValidateToken(token);
-            StartTasksAndForget();
-            ReturnToPool();
+            _runWithContinue = true;
+            _continueWith = action;
+            _exceptionSlience = exceptionSlience;
+            StartTasks();
+            if(_status != ValueSourceStatus.Pending){
+                this.TryInvokeContinueWithAction();
+            }
         }
 
         public void GetResult(short token)
@@ -109,9 +147,9 @@ namespace MS.Async{
             ValidateToken(token);
             try{
                 if(_status == ValueSourceStatus.Canceled){
-                    throw _exception;
+                    throw _cancellationException;
                 }else if(_status == ValueSourceStatus.Faulted){
-                    throw new AggregateException(_exception);
+                    throw new AggregateException(_exceptions);
                 }
             }finally{
                 ReturnToPool();
@@ -138,30 +176,23 @@ namespace MS.Async{
         }
 
         private async LitTask RunTask(LitTask task){
-            
             try{
                 await task;
             }catch(LitCancelException cancelException){
                 if(_status != ValueSourceStatus.Faulted){
                     _status = ValueSourceStatus.Canceled;
                 }
-                _exception = cancelException;
+                _cancellationException = cancelException;
             }catch(Exception exception){
                 _status = ValueSourceStatus.Faulted;
-                _exception =exception;
+                _cancellationException = exception;
+                if(_exceptions == null){
+                    _exceptions = new List<Exception>();
+                }
+                _exceptions.Add(exception);
             }finally{
                 this.CompleteSubTask();
             }
-        }
-
-        private void StartTasksAndForget(){
-            foreach(var task in _tasks){
-                RunTaskVoid(task).Forget();
-            }
-        }
-
-        private async LitTask RunTaskVoid(LitTask task){
-            await task;
         }
     }
 }

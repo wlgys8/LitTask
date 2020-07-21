@@ -75,6 +75,9 @@ namespace MS.Async{
         private int _firstCompletedTaskIndex = 0;
         private ValueSourceStatus _status = ValueSourceStatus.Pending;
         private Exception _exception;
+        private Action<LitTaskResult<LitTask.WhenAnyResult>> _continueWith;
+        private bool _exceptionSlience = true;
+        private bool _runWithContinue = false;
 
         private void Initialize(IEnumerable<LitTask> tasks,short token){
             if(_token != 0){
@@ -91,6 +94,8 @@ namespace MS.Async{
             _firstCompletedTaskIndex = 0;
             _status = ValueSourceStatus.Pending;
             _exception = null;
+            _continueWith = null;
+            _runWithContinue = false;
             _pool.Push(this);
         }
 
@@ -114,11 +119,16 @@ namespace MS.Async{
             }
         }
 
-        public void Forget(short token)
+        public void Continue(short token,bool exceptionSlience,Action<LitTaskResult<LitTask.WhenAnyResult>> action)
         {
             ValidateToken(token);
-            StartTasksAndForget();
-            ReturnToPool();
+            _exceptionSlience = exceptionSlience;
+            _continueWith = action;
+            _runWithContinue = true;
+            StartTasks();
+            if(_status != ValueSourceStatus.Pending){
+                TryInvokeContinueWithAction();
+            }
         }
 
         public LitTask.WhenAnyResult GetResult(short token)
@@ -175,19 +185,27 @@ namespace MS.Async{
                     _firstCompletedTaskIndex = taskIndex;
                     if(_continuation != null){
                         _continuation();
+                    }else{
+                        if(_runWithContinue){
+                            try{
+                                TryInvokeContinueWithAction();
+                            }finally{
+                                this.ReturnToPool();
+                            }
+                        }else{
+                            //run in sync mode. use will call continute to get the result
+
+                        }
                     }
                 }
             }
         }
 
-        private void StartTasksAndForget(){
-            foreach(var task in _tasks){
-                RunTaskVoid(task).Forget();
-            }
+        private void TryInvokeContinueWithAction(){
+            if(_continueWith != null){
+                _continueWith(new LitTaskResult<LitTask.WhenAnyResult>(new LitTask.WhenAnyResult(_firstCompletedTaskIndex,_status,_exception)));
+            }           
         }
 
-        private async LitTask RunTaskVoid(LitTask task){
-            await task;
-        }
     }
 }

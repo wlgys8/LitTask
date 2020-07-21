@@ -9,7 +9,7 @@ namespace MS.Async{
 
         void OnCompleted(Action continuation,short token);
 
-        void Forget(short token);
+        
 
     }
     public interface ILitTaskValueSource:ILitTaskValueSourceBase
@@ -17,11 +17,15 @@ namespace MS.Async{
 
         void GetResult(short token);
 
+        void Continue(short token,bool exceptionSlience,Action<LitTaskResult> action);
+
     }
 
     public interface ILitTaskValueSource<T>:ILitTaskValueSourceBase
     {
         T GetResult(short token);
+
+        void Continue(short token,bool exceptionSlience,Action<LitTaskResult<T>> action);
     }
 
     public enum ValueSourceStatus{

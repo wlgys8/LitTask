@@ -33,8 +33,11 @@ namespace MS.Async.CompilerServices{
 
         private Exception _exception;
 
-        private bool _shouldForget = false;
+        private bool _exceptionSlience = true;
         private Action _continuation = null;
+        private Action<LitTaskResult> _continueWithAction = null;
+        private bool _runWithContinue = false;
+
 
 
         private void ValidateToken(short token){
@@ -52,8 +55,10 @@ namespace MS.Async.CompilerServices{
                 _stateMachineBox = null;
             }
             _status = ValueSourceStatus.Pending;
-            _shouldForget = false;
+            _exceptionSlience = true;
             _continuation = null;
+            _continueWithAction = null;
+            _runWithContinue = false;
             _pool.Push(this);
             Diagnostics.Trace.TraceReturn(this);
         }
@@ -71,10 +76,26 @@ namespace MS.Async.CompilerServices{
                 // get result will be called in continuation
                 _continuation();
             }else{
-                if(_shouldForget){
-                    ReturnToPool();
+                
+                if(_runWithContinue){
+                    //run in async mode, but use continue instead of await
+                    try{
+                        if(_continueWithAction != null){
+                            try{
+                                _continueWithAction(new LitTaskResult(null));
+                            }catch(System.Exception e){
+                                if(!_exceptionSlience){
+                                    throw e;
+                                }
+                            }
+                        }else{
+                            //missing continueWithAction
+                        }
+                    }finally{
+                        ReturnToPool();
+                    }
                 }else{
-                    //maybe leak
+                    //run in sync mode. user will call continue to finish to task
                 }
             }
         }
@@ -90,17 +111,24 @@ namespace MS.Async.CompilerServices{
             if(_continuation != null){
                 _continuation();
             }else{
-                if(_shouldForget){
+                if(_runWithContinue){
                     try{
-                        if(_status == ValueSourceStatus.Faulted){
-                            throw _exception;
-                            // throw new AggregateException(_exception);
+                        if(_continueWithAction != null){
+                            try{
+                                _continueWithAction(new LitTaskResult(_exception));
+                            }catch(Exception e){
+                                if(!_exceptionSlience){
+                                    throw e;
+                                }
+                            }
+                        }else{
+                            //missing continueWithAction
                         }
                     }finally{
                         ReturnToPool();
                     }
                 }else{
-                    //maybe leak
+                    //run in sync mode. user will call continue to finish to task
                 }
             }
         }
@@ -171,13 +199,32 @@ namespace MS.Async.CompilerServices{
             _continuation = continuation;
         }
 
-        public void Forget(short token)
-        {
+        public void Continue(short token,bool exceptionSlience,Action<LitTaskResult> action){
             ValidateToken(token);
-            _shouldForget = true;
+            _exceptionSlience = exceptionSlience;
+            _continueWithAction = action;
+            _runWithContinue = true;
             if(_status != ValueSourceStatus.Pending){
-                ReturnToPool();
-            }
+                if(_continueWithAction != null){
+                    try{
+                        _continueWithAction(new LitTaskResult(_exception));
+                    }catch(System.Exception e){
+                        if(!_exceptionSlience){
+                            throw e;
+                        }
+                    }finally{
+                        ReturnToPool();
+                    }
+                }else{
+                    try{
+                        if(!_exceptionSlience){
+                            ThrowCancellationOrExceptionIfNeed();
+                        }
+                    }finally{
+                        ReturnToPool();
+                    }
+                }
+            }            
         }
 
         public LitTask Task{
@@ -194,19 +241,20 @@ namespace MS.Async.CompilerServices{
     }
 
 
-    public class AsyncLitTaskMethodBuilder<T>:ILitTaskValueSource<T>{
+    public class AsyncLitTaskMethodBuilder<T>:ILitTaskValueSource<T>,Diagnostics.ITracableObject{
         private static Stack<AsyncLitTaskMethodBuilder<T>> _pool = new Stack<AsyncLitTaskMethodBuilder<T>>();
         private static TokenAllocator _tokenAllocator = new TokenAllocator();
 
         public static AsyncLitTaskMethodBuilder<T> Create(){
-            AsyncLitTaskMethodBuilder<T> res = null;
+            AsyncLitTaskMethodBuilder<T> builder = null;
             if(_pool.Count == 0){
-                res = new AsyncLitTaskMethodBuilder<T>();
+                builder = new AsyncLitTaskMethodBuilder<T>();
             }else{
-                res = _pool.Pop();
+                builder = _pool.Pop();
             }
-            res._token = _tokenAllocator.Next();
-            return res;
+            builder._token = _tokenAllocator.Next();
+            Diagnostics.Trace.TraceAllocation(builder);
+            return builder;
         }
 
         private IStateMachineBox _stateMachineBox;
@@ -215,7 +263,9 @@ namespace MS.Async.CompilerServices{
         private short _token;
         private ValueSourceStatus _status;
         private Action _continuation;
-        private bool _shouldForget;
+        private bool _exceptionSlience =  true;
+        private Action<LitTaskResult<T>> _continueWithAction;
+        private bool _runWithContinue = false;
 
         private void ReturnToPool(){
             if(_token == 0){
@@ -230,9 +280,12 @@ namespace MS.Async.CompilerServices{
             _result = default;
             _exception = null;
             _continuation = null;
-            _shouldForget = false;
+            _continueWithAction = null;
+            _exceptionSlience = true;
+            _runWithContinue = false;
             _status = ValueSourceStatus.Pending;
             _pool.Push(this);
+            Diagnostics.Trace.TraceReturn(this);
         }
 
         private void ValidateToken(short token){
@@ -249,10 +302,24 @@ namespace MS.Async.CompilerServices{
             if(_continuation != null){
                 _continuation();
             }else{
-                if(_shouldForget){
-                    ReturnToPool();
+                if(_runWithContinue){
+                    try{
+                        if(_continueWithAction != null){
+                            try{
+                                _continueWithAction(new LitTaskResult<T>(result));
+                            }catch(System.Exception e){
+                                if(!_exceptionSlience){
+                                    throw e;
+                                }
+                            }
+                        }else{
+                            //missing continueWithAction
+                        }
+                    }finally{
+                        ReturnToPool();
+                    }
                 }else{
-                    //maybe leak
+                    //run in sync mode. user will call continue to finish to task
                 }
             }
         }
@@ -268,17 +335,24 @@ namespace MS.Async.CompilerServices{
             if(_continuation != null){
                 _continuation();
             }else{
-                if(_shouldForget){
+                if(_runWithContinue){
                     try{
-                        if(_status == ValueSourceStatus.Faulted){
-                            throw _exception;
-                            // throw new AggregateException(_exception);
+                        if(_continueWithAction != null){
+                            try{
+                                _continueWithAction(new LitTaskResult<T>(_exception));
+                            }catch(System.Exception e){
+                                if(!_exceptionSlience){
+                                    throw e;
+                                }
+                            }
+                        }else{
+                            //missing continueWithAction
                         }
                     }finally{
                         ReturnToPool();
                     }
                 }else{
-                    //maybe leak
+                    //run in sync mode. user will call continue to finish to task
                 }
             }
         }
@@ -350,23 +424,47 @@ namespace MS.Async.CompilerServices{
             _continuation = continuation;
         }
 
-        public void Forget(short token)
+        public void Continue(short token, bool exceptionSlience,Action<LitTaskResult<T>> action)
         {
             ValidateToken(token);
-            _shouldForget = true;
-            if(_status != ValueSourceStatus.Pending){
-                try{
-                    // ThrowCancellationOrExceptionIfNeed();
-                }finally{
-                    //if completed. return to poll
-                    ReturnToPool();
+            _exceptionSlience = exceptionSlience;
+            _continueWithAction = action;
+            _runWithContinue = true;
+             if(_status != ValueSourceStatus.Pending){
+                if(_continueWithAction != null){
+                    try{
+                        if(_status == ValueSourceStatus.Succeed){
+                            _continueWithAction(new LitTaskResult<T>(_result));
+                        }else{
+                            _continueWithAction(new LitTaskResult<T>(_exception));
+                        }
+                    }catch(System.Exception e){
+                        if(!_exceptionSlience){
+                            throw e;
+                        }
+                    }finally{
+                        ReturnToPool();
+                    }
+                }else{
+                    try{
+                        if(!_exceptionSlience){
+                            ThrowCancellationOrExceptionIfNeed();
+                        }
+                    }finally{
+                        ReturnToPool();
+                    }
                 }
-            }
+            }           
         }
-
         public LitTask<T> Task{
             get{
                 return new LitTask<T>(this,_token);
+            }
+        }
+
+        public string DebugNameId{
+            get{
+                return this.GetType().Name;
             }
         }
     }
