@@ -49,7 +49,7 @@ namespace MS.Async.Editor{
 
             public float[] realSizes{
                 get{
-                    #if UNITY_2019_1_OR_NEWER
+                    #if UNITY_2020_1_OR_NEWER
                         return (float[])SplitterStateType.GetField("realSizes",flags).GetValue(_raw);
                     #else
                         var intRealSizes = (int[])SplitterStateType.GetField("realSizes",flags).GetValue(_raw);
