@@ -35,16 +35,21 @@ namespace MS.Async.CompilerServices{
             Diagnostics.Trace.TraceAllocation(box);
             return box;
         }
-        protected TStateMachine _stateMachine;
+        private TStateMachine _stateMachine;
         public StateMachineBox(){
             this.MoveNext = ()=>{
                 _stateMachine.MoveNext();
-            };          
+            };     
+            this.ReturnAction = this.ReturnImmediately;     
         }
-
+ 
         [DebuggerHidden]
         public Action MoveNext{
             get;private set;
+        }
+
+        private Action ReturnAction{
+            get;set;
         }
 
         public string DebugNameId{
@@ -52,10 +57,15 @@ namespace MS.Async.CompilerServices{
                 return _stateMachine.GetType().Name;
             }
         }
-        public void Return(){
+        private void ReturnImmediately(){
             _stateMachine = default(TStateMachine);
             TaskValueSourcePool<StateMachineBox<TStateMachine>>.Return(this);
             Diagnostics.Trace.TraceReturn(this);
+        }
+
+        public void Return(){
+            //return later to fix Il2cpp bug
+            Utilities.UnityLoopsHelper.OnceUpdate(this.ReturnAction);
         }
 
     }    
