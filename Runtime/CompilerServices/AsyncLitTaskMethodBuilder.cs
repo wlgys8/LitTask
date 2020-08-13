@@ -1,10 +1,8 @@
 ﻿using System.Runtime.CompilerServices;
 using System;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
-using System.Security;
 using System.Diagnostics;
-
+using System.Runtime.ExceptionServices;
 
 namespace MS.Async.CompilerServices{
 
@@ -83,9 +81,9 @@ namespace MS.Async.CompilerServices{
                         if(_continueWithAction != null){
                             try{
                                 _continueWithAction(new LitTaskResult(null));
-                            }catch(System.Exception e){
+                            }catch(System.Exception){
                                 if(!_exceptionSlience){
-                                    throw e;
+                                    throw;
                                 }
                             }
                         }else{
@@ -116,9 +114,9 @@ namespace MS.Async.CompilerServices{
                         if(_continueWithAction != null){
                             try{
                                 _continueWithAction(new LitTaskResult(_exception));
-                            }catch(Exception e){
+                            }catch(Exception){
                                 if(!_exceptionSlience){
-                                    throw e;
+                                    throw;
                                 }
                             }
                         }else{
@@ -171,8 +169,7 @@ namespace MS.Async.CompilerServices{
         }
         protected void ThrowCancellationOrExceptionIfNeed(){
             if(_status == ValueSourceStatus.Faulted){
-                throw _exception;
-                // throw new AggregateException(_exception);
+                ExceptionDispatchInfo.Capture(_exception).Throw();
             }else if(_status == ValueSourceStatus.Canceled){
                 throw _exception;
             }           
@@ -395,8 +392,7 @@ namespace MS.Async.CompilerServices{
 
         protected void ThrowCancellationOrExceptionIfNeed(){
             if(_status == ValueSourceStatus.Faulted){
-                throw _exception;
-                // throw new AggregateException(_exception);
+                ExceptionDispatchInfo.Capture(_exception).Throw();
             }else if(_status == ValueSourceStatus.Canceled){
                 throw _exception;
             }           
