@@ -76,7 +76,6 @@ namespace MS.Async{
         private ValueSourceStatus _status = ValueSourceStatus.Pending;
         private Exception _exception;
         private Action<LitTaskResult<LitTask.WhenAnyResult>> _continueWith;
-        private bool _exceptionSlience = true;
         private bool _runWithContinue = false;
 
         private void Initialize(IEnumerable<LitTask> tasks,short token){
@@ -119,10 +118,9 @@ namespace MS.Async{
             }
         }
 
-        public void Continue(short token,bool exceptionSlience,Action<LitTaskResult<LitTask.WhenAnyResult>> action)
+        public void Continue(short token,Action<LitTaskResult<LitTask.WhenAnyResult>> action)
         {
             ValidateToken(token);
-            _exceptionSlience = exceptionSlience;
             _continueWith = action;
             _runWithContinue = true;
             StartTasks();

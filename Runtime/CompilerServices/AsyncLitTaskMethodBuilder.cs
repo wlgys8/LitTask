@@ -31,7 +31,6 @@ namespace MS.Async.CompilerServices{
 
         private Exception _exception;
 
-        private bool _exceptionSlience = true;
         private Action _continuation = null;
         private Action<LitTaskResult> _continueWithAction = null;
         private bool _runWithContinue = false;
@@ -53,7 +52,6 @@ namespace MS.Async.CompilerServices{
                 _stateMachineBox = null;
             }
             _status = ValueSourceStatus.Pending;
-            _exceptionSlience = true;
             _continuation = null;
             _continueWithAction = null;
             _runWithContinue = false;
@@ -81,10 +79,8 @@ namespace MS.Async.CompilerServices{
                         if(_continueWithAction != null){
                             try{
                                 _continueWithAction(new LitTaskResult(null));
-                            }catch(System.Exception){
-                                if(!_exceptionSlience){
-                                    throw;
-                                }
+                            }catch(System.Exception e){
+                                Utilities.UnityLoopsHelper.ThrowAsync(e);
                             }
                         }else{
                             //missing continueWithAction
@@ -114,13 +110,12 @@ namespace MS.Async.CompilerServices{
                         if(_continueWithAction != null){
                             try{
                                 _continueWithAction(new LitTaskResult(_exception));
-                            }catch(Exception){
-                                if(!_exceptionSlience){
-                                    throw;
-                                }
+                            }catch(Exception e){
+                                Utilities.UnityLoopsHelper.ThrowAsync(e);
                             }
                         }else{
-                            //missing continueWithAction
+                            //continue without handle exception. so throw exception async
+                            Utilities.UnityLoopsHelper.ThrowAsync(exception);
                         }
                     }finally{
                         ReturnToPool();
@@ -196,9 +191,8 @@ namespace MS.Async.CompilerServices{
             _continuation = continuation;
         }
 
-        public void Continue(short token,bool exceptionSlience,Action<LitTaskResult> action){
+        public void Continue(short token,Action<LitTaskResult> action){
             ValidateToken(token);
-            _exceptionSlience = exceptionSlience;
             _continueWithAction = action;
             _runWithContinue = true;
             if(_status != ValueSourceStatus.Pending){
@@ -206,16 +200,14 @@ namespace MS.Async.CompilerServices{
                     try{
                         _continueWithAction(new LitTaskResult(_exception));
                     }catch(System.Exception e){
-                        if(!_exceptionSlience){
-                            throw e;
-                        }
+                        Utilities.UnityLoopsHelper.ThrowAsync(e);
                     }finally{
                         ReturnToPool();
                     }
                 }else{
                     try{
-                        if(!_exceptionSlience){
-                            ThrowCancellationOrExceptionIfNeed();
+                        if(_status == ValueSourceStatus.Faulted){
+                            Utilities.UnityLoopsHelper.ThrowAsync(_exception);
                         }
                     }finally{
                         ReturnToPool();
@@ -260,7 +252,6 @@ namespace MS.Async.CompilerServices{
         private short _token;
         private ValueSourceStatus _status;
         private Action _continuation;
-        private bool _exceptionSlience =  true;
         private Action<LitTaskResult<T>> _continueWithAction;
         private bool _runWithContinue = false;
 
@@ -278,7 +269,6 @@ namespace MS.Async.CompilerServices{
             _exception = null;
             _continuation = null;
             _continueWithAction = null;
-            _exceptionSlience = true;
             _runWithContinue = false;
             _status = ValueSourceStatus.Pending;
             _pool.Push(this);
@@ -305,9 +295,7 @@ namespace MS.Async.CompilerServices{
                             try{
                                 _continueWithAction(new LitTaskResult<T>(result));
                             }catch(System.Exception e){
-                                if(!_exceptionSlience){
-                                    throw e;
-                                }
+                                Utilities.UnityLoopsHelper.ThrowAsync(e);
                             }
                         }else{
                             //missing continueWithAction
@@ -338,12 +326,10 @@ namespace MS.Async.CompilerServices{
                             try{
                                 _continueWithAction(new LitTaskResult<T>(_exception));
                             }catch(System.Exception e){
-                                if(!_exceptionSlience){
-                                    throw e;
-                                }
+                                Utilities.UnityLoopsHelper.ThrowAsync(e);
                             }
                         }else{
-                            //missing continueWithAction
+                            Utilities.UnityLoopsHelper.ThrowAsync(_exception);
                         }
                     }finally{
                         ReturnToPool();
@@ -420,10 +406,9 @@ namespace MS.Async.CompilerServices{
             _continuation = continuation;
         }
 
-        public void Continue(short token, bool exceptionSlience,Action<LitTaskResult<T>> action)
+        public void Continue(short token,Action<LitTaskResult<T>> action)
         {
             ValidateToken(token);
-            _exceptionSlience = exceptionSlience;
             _continueWithAction = action;
             _runWithContinue = true;
              if(_status != ValueSourceStatus.Pending){
@@ -435,16 +420,14 @@ namespace MS.Async.CompilerServices{
                             _continueWithAction(new LitTaskResult<T>(_exception));
                         }
                     }catch(System.Exception e){
-                        if(!_exceptionSlience){
-                            throw e;
-                        }
+                        Utilities.UnityLoopsHelper.ThrowAsync(e);
                     }finally{
                         ReturnToPool();
                     }
                 }else{
                     try{
-                        if(!_exceptionSlience){
-                            ThrowCancellationOrExceptionIfNeed();
+                        if(_status == ValueSourceStatus.Faulted){
+                            Utilities.UnityLoopsHelper.ThrowAsync(_exception);
                         }
                     }finally{
                         ReturnToPool();

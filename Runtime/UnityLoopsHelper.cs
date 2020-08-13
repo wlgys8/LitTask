@@ -23,6 +23,10 @@ namespace MS.Async.Utilities{
             #endif
         }
 
+        public static void ThrowAsync(Exception exception){
+            UnityEngine.Debug.LogException(exception);
+        }
+
         [RuntimeInitializeOnLoadMethodAttribute(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void AppLaunch(){
             var instance = new GameObject("LitTaskLoops").AddComponent<UnityLoopsHelper>();

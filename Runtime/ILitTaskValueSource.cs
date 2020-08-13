@@ -17,7 +17,7 @@ namespace MS.Async{
 
         void GetResult(short token);
 
-        void Continue(short token,bool exceptionSlience,Action<LitTaskResult> action);
+        void Continue(short token,Action<LitTaskResult> action);
 
     }
 
@@ -25,7 +25,7 @@ namespace MS.Async{
     {
         T GetResult(short token);
 
-        void Continue(short token,bool exceptionSlience,Action<LitTaskResult<T>> action);
+        void Continue(short token,Action<LitTaskResult<T>> action);
     }
 
     public enum ValueSourceStatus{

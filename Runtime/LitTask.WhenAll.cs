@@ -48,7 +48,6 @@ namespace MS.Async{
         private Exception _cancellationException;
         private List<Exception> _exceptions;
         private Action<LitTaskResult> _continueWith;
-        private bool _exceptionSlience = false;
         private bool _runWithContinue = false;
 
         private WhenAllSource(){
@@ -130,12 +129,11 @@ namespace MS.Async{
             }
         }
 
-        public void Continue(short token,bool exceptionSlience,Action<LitTaskResult> action)
+        public void Continue(short token,Action<LitTaskResult> action)
         {
             ValidateToken(token);
             _runWithContinue = true;
             _continueWith = action;
-            _exceptionSlience = exceptionSlience;
             StartTasks();
             if(_status != ValueSourceStatus.Pending){
                 this.TryInvokeContinueWithAction();

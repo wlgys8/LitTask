@@ -22,7 +22,7 @@ namespace MS.Async{
             if(_valueSource == null){
                 return;
             }
-            _valueSource.Continue(_token,true,null);
+            _valueSource.Continue(_token,null);
         }
      
         /// <summary>
@@ -34,7 +34,7 @@ namespace MS.Async{
             if(_valueSource == null){
                 return;
             }
-            _valueSource.Continue(_token,false,action);            
+            _valueSource.Continue(_token,action);            
         }
 
         [DebuggerHidden]
@@ -90,14 +90,14 @@ namespace MS.Async{
             if(_valueSource == null){
                 return;
             }
-            _valueSource.Continue(_token,true,null);
+            _valueSource.Continue(_token,null);
         }
         
         public void ContinueWith(Action<LitTaskResult<T>> action){
            if(_valueSource == null){
                 return;
             }
-            _valueSource.Continue(_token,false,action);            
+            _valueSource.Continue(_token,action);            
         }
         
 
