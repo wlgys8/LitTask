@@ -14,8 +14,12 @@ namespace MS.Async.Utilities{
             if(Application.isPlaying){
                 _updates.Add(update);
             }else{
-                 UnityEditor.EditorApplication.update += ()=>{
-                     update();
+                 UnityEditor.EditorApplication.delayCall += ()=>{
+                     try{
+                        update();
+                     }catch(System.Exception e){
+                         Debug.LogException(e);
+                     }
                  };
             }
             #else
