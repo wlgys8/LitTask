@@ -27,6 +27,7 @@ namespace MS.Async.Tests{
             var op = new AwaitLitTaskOperation(Complete());
             yield return op;
             Assert.IsNull(op.exception);
+            
         }       
 
        [UnityTest]
@@ -62,6 +63,7 @@ namespace MS.Async.Tests{
         [UnityTest]
         public IEnumerator ForgetExceptionSync(){
             ThrowExceptionSync().Forget();
+            UnityEngine.TestTools.LogAssert.Expect(LogType.Exception,"TestException: TestException");
             yield return null;
         }
 
@@ -255,6 +257,9 @@ namespace MS.Async.Tests{
 
     public class TestException:System.Exception{
 
+        public TestException():base("TestException"){
+
+        }
     }
 
 
