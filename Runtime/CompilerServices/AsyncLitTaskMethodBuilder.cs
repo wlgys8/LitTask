@@ -115,7 +115,9 @@ namespace MS.Async.CompilerServices{
                             }
                         }else{
                             //continue without handle exception. so throw exception async
-                            Utilities.UnityLoopsHelper.ThrowAsync(exception);
+                            if(_status == ValueSourceStatus.Faulted){
+                                Utilities.UnityLoopsHelper.ThrowAsync(exception);
+                            }
                         }
                     }finally{
                         ReturnToPool();
@@ -329,7 +331,9 @@ namespace MS.Async.CompilerServices{
                                 Utilities.UnityLoopsHelper.ThrowAsync(e);
                             }
                         }else{
-                            Utilities.UnityLoopsHelper.ThrowAsync(_exception);
+                            if(_status == ValueSourceStatus.Faulted){
+                                Utilities.UnityLoopsHelper.ThrowAsync(_exception);
+                            }
                         }
                     }finally{
                         ReturnToPool();
