@@ -49,6 +49,8 @@ namespace MS.Async.Diagnostics{
 
         private const string DEFAULT_EMPTY_STACK_STACE = "stack trace disabled";
 
+        public static event Action onTraceUpdate;
+
 
         [Conditional("LIT_TASK_TRACE")]
         [DebuggerHidden]
@@ -66,11 +68,17 @@ namespace MS.Async.Diagnostics{
             }else{
                 item.StackTrace = DEFAULT_EMPTY_STACK_STACE;
             }
+            if(onTraceUpdate != null){
+                onTraceUpdate();
+            }
         }
 
         [Conditional("LIT_TASK_TRACE")]
         public static void TraceReturn(ITracableObject source){
             _taskSourceDict.Remove(source.GetHashCode());
+            if(onTraceUpdate != null){
+                onTraceUpdate();
+            }
         }
 
         public static int[] ListTaskSourceIds(){

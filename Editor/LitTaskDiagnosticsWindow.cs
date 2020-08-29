@@ -62,6 +62,15 @@ namespace MS.Async.Editor{
             _headerSplitState = null;
             _contentSplitState = null;
             headerSplitState.splitSize = 6;
+            Trace.onTraceUpdate += OnTraceUpdate;
+        }
+
+        void OnDisable(){
+            Trace.onTraceUpdate -= OnTraceUpdate;
+        }
+
+        private void OnTraceUpdate(){
+            this.Repaint();
         }
 
         private void OnGUI() {
